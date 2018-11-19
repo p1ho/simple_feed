@@ -1,0 +1,9 @@
+name = Simple Feed
+description= Creates JSON feeds for node and taxonomy terms.
+core=7.x
+version=7.x-1.0
+package= UM Student-Life
+files[] = simple_feed.module
+files[] = simple_feed.install
+
+configure = admin/config/development/simple_feed

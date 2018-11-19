@@ -1,0 +1,148 @@
+<?php
+
+/**
+ * Install file for simple_feed
+ */
+
+/**
+ * Implements hook_schema()
+ * Table definition to store different feed profiles
+ */
+function simple_feed_schema() {
+  $schema = array();
+
+  $schema['simple_feed_profiles'] = array(
+    'description' => 'Stores profile information for simple_feed',
+    'fields' => array(
+      'pfid' => array(
+        'type'        => 'serial',
+        'description' => 'Primary ID field for the table. Used for internal lookups only.',
+        'unsigned'    => TRUE,
+        'not null'    => TRUE,
+        'no export'   => TRUE,
+      ),
+      'name' => array(
+        'description' => 'Name of the feed profile.',
+        'type'        => 'varchar',
+        'length'      => 255,
+        'not null'    => TRUE,
+      ),
+      'description' => array(
+        'description' => 'Description of the feed profile.',
+        'type'        => 'varchar',
+        'length'      => 255,
+        'not null'    => TRUE,
+      ),
+      // In my opinion, storing hashes of the key would over-complicate things
+      // because these are more like access tokens, for convenience, I'm storing
+      // the key which would allow for easier look up. This may change in the
+      // future.
+      'access_key' => array(
+        'description' => 'The key for the feed profile',
+        'type'        => 'varchar',
+        'length'      => 255,
+        'not null'    => TRUE,
+      ),
+      'access_key_allow_in_url' => array(
+        'description' => 'Whether we allow users to append key in the query string',
+        'type'        => 'int',
+        'not null'    => TRUE,
+      ),
+      'http_referer_restrict' => array(
+        'description' => 'Whether we restrict HTTP referers',
+        'type'        => 'int',
+        'not null'    => TRUE,
+      ),
+      'http_referers_allowed' => array(
+        'description' => 'List of HTTP referers allowed',
+        'type'        => 'text',
+        'size'        => 'big',
+      ),
+      'ip_address_restrict' => array(
+        'description' => 'Whether we restrict IP addresses allowed to connect',
+        'type'        => 'int',
+        'not null'    => TRUE,
+      ),
+      'ip_addresses_allowed' => array(
+        'description' => 'List IP addresses allowed',
+        'type'        => 'text',
+        'size'        => 'big',
+      ),
+      'allow_unpublished' => array(
+        'description' => 'Whether we allow unpublished nodes to be accessed',
+        'type'        => 'int',
+        'not null'    => TRUE,
+      ),
+      'node_types_allowed' => array(
+        'description' => 'Settings for available node types',
+        'type'        => 'text',
+        'size'        => 'big',
+      ),
+      'taxonomy_vocabs_allowed' => array(
+        'description' => 'Settings for available taxonomy vocabulary types',
+        'type'        => 'text',
+        'size'        => 'big',
+      ),
+      'summary_node_attributes' => array(
+        'description' => 'Summay mode settings for enabled node attributes',
+        'type'        => 'text',
+        'size'        => 'big',
+      ),
+      'summary_taxonomy_term_attributes' => array(
+        'description' => 'Summary mode settings for enabled taxonomy term attributes',
+        'type'        => 'text',
+        'size'        => 'big',
+      ),
+      'node_attributes' => array(
+        'description' => 'Entity query mode settings for enabled node attributes',
+        'type'        => 'text',
+        'size'        => 'big',
+      ),
+      'taxonomy_term_attributes' => array(
+        'description' => 'Entity query mode settings for enabled taxonomy term attributes',
+        'type'        => 'text',
+        'size'        => 'big',
+      ),
+    ),
+    'primary key' => array('pfid'),
+    'unique keys' => array(
+      'name' => array('name'),
+    ),
+  );
+  return $schema;
+}
+
+/**
+ * Implements hook_install()
+ */
+function simple_feed_install() {
+  // set base attributes
+  module_load_include('inc', 'simple_feed', 'resources/base_attributes');
+  variable_set('simple_feed_base_node_attributes', simple_feed_get_base_node_attr());
+  variable_set('simple_feed_base_taxonomy_term_attributes', simple_feed_get_base_taxonomy_term_attr());
+
+  // set default settings
+  module_load_include('inc', 'simple_feed', 'resources/default_settings');
+  simple_feed_init_default_settings();
+
+  // insert a default profile
+  module_load_include('inc', 'simple_feed', 'resources/db_control');
+  simple_feed_add_profile('default_profile', 'auto-generated example');
+}
+
+/**
+ * Implements hook_uninstall()
+ */
+function simple_feed_uninstall() {
+  // delete base attributes
+  variable_del('simple_feed_base_node_attributes');
+  variable_del('simple_feed_base_taxonomy_term_attributes');
+  variable_del('simple_feed_profile_statuses');
+
+  // set default settings
+  module_load_include('inc', 'simple_feed', 'resources/default_settings');
+  simple_feed_del_default_settings();
+
+  // clear cache
+  cache_clear_all('variables', 'cache');
+}

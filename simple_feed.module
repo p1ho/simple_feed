@@ -1,0 +1,277 @@
+<?php
+
+/**
+ * A simple feed that outputs node/taxonomy_term information in json format
+ *
+ * I have included some redundancies in the code for easier parsing, but if this
+ * does become something of value, it will definitely be further optimized.
+ */
+
+/**
+ * Implements hook_menu()
+ */
+function simple_feed_menu() {
+  module_load_include('inc', 'simple_feed', 'resources/db_control');
+
+  $items = array();
+
+  //----------------------------------------------------------------------------
+  // welcome page
+  $feed_dir = 'simple_feed';
+  $items[$feed_dir] = array(
+    'page callback' => 'simple_feed_welcome',
+    'access callback' => TRUE, // expose the page to show that module is enabled
+    'type' => MENU_CALLBACK,
+  );
+  //----------------------------------------------------------------------------
+  // profile menu
+  $config_dir = 'admin/config/development/simple_feed';
+
+  $items[$config_dir] = array(
+    'title' => t('Simple Feed'),
+    'description' => t('Manage simple feed profiles.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('simple_feed_profile_overview'),
+    'access arguments' => array('administer site configuration'),
+  );
+  // set profiles
+  $items[$config_dir . '/profiles'] = array(
+    'title' => t('Profiles'),
+    'weight' => 0,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  // set default settings
+  $items[$config_dir . '/default_settings'] = array(
+    'title' => t('Default Settings'),
+    'description' => t('Change default settings.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('simple_feed_default_settings_form'),
+    'access arguments' => array('administer site configuration'),
+    'weight' => 1,
+    'type' => MENU_LOCAL_TASK,
+  );
+  // profile add
+  $items[$config_dir . '/profiles/add'] = array(
+    'title' => t('Add Profile'),
+    'description' => t('Add new simple feed profile.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('simple_feed_add_profile_form'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_LOCAL_ACTION,
+  );
+  // profile dependent pages
+  $profiles = simple_feed_get_all_profiles();
+  $profile_statuses = variable_get('simple_feed_profile_statuses');
+  foreach($profiles as $p) {
+    $name = $p['name'];
+
+    // only build the feed menu item if it's enabled
+    if ($profile_statuses[$name] !== 0) {
+      // no titles specified because these won't be rendered as drupal pages
+      //------------------------------------------------------------------------
+      // welcome page
+      $items[$feed_dir . '/' . $name] = array(
+        'page callback' => 'simple_feed_welcome_profile',
+        'page arguments' => array(1),
+        'access callback' => 'simple_feed_access_callback',
+        'access arguments' => array(1),
+        'type' => MENU_CALLBACK,
+      );
+      //------------------------------------------------------------------------
+      // summary
+      $items[$feed_dir . '/' . $name . '/summary'] = array(
+        'page callback' => 'simple_feed_summary',
+        'page arguments' => array(1),
+        'access callback' => 'simple_feed_access_callback',
+        'access arguments' => array(1),
+        'type' => MENU_CALLBACK,
+      );
+      //------------------------------------------------------------------------
+      // node and nodes
+      $items[$feed_dir . '/' . $name . '/node'] = array(
+        'page callback' => 'simple_feed_node',
+        'page arguments' => array(1,3),
+        'access callback' => 'simple_feed_access_callback',
+        'access arguments' => array(1),
+        'type' => MENU_CALLBACK,
+      );
+      $items[$feed_dir . '/' . $name . '/nodes'] = array(
+        'page callback' => 'simple_feed_nodes',
+        'page arguments' => array(1,3),
+        'access callback' => 'simple_feed_access_callback',
+        'access arguments' => array(1),
+        'type' => MENU_CALLBACK,
+      );
+      //------------------------------------------------------------------------
+      // taxonomy term and terms
+      $items[$feed_dir . '/' . $name . '/taxonomy_term'] = array(
+        'page callback' => 'simple_feed_taxonomy_term',
+        'page arguments' => array(1,3),
+        'access callback' => 'simple_feed_access_callback',
+        'access arguments' => array(1),
+        'type' => MENU_CALLBACK,
+      );
+      $items[$feed_dir . '/' . $name . '/taxonomy_terms'] = array(
+        'page callback' => 'simple_feed_taxonomy_terms',
+        'page arguments' => array(1,3),
+        'access callback' => 'simple_feed_access_callback',
+        'access arguments' => array(1),
+        'type' => MENU_CALLBACK,
+      );
+    }
+    //--------------------------------------------------------------------------
+    // Configuration
+    $items[$config_dir . '/profiles/list/' . $p['name']] = array(
+      'title' => t('Configure Profile'),
+      'description' => t('Configure an existing simple feed profile.'),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('simple_feed_config_profile_form', 6),
+      'access arguments' => array('administer site configuration'),
+    );
+    // Delete
+    $items[$config_dir . '/profiles/list/' . $p['name'] . '/delete'] = array(
+      'title' => t('Delete Profile'),
+      'description' => t('Delete an existing simple feed profile.'),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('simple_feed_delete_profile_form', 6),
+      'access arguments' => array('administer site configuration'),
+    );
+  }
+
+  return $items;
+}
+
+//------------------------------------------------------------------------------
+// Configuration callbacks, will return fetched forms
+
+/**
+ * Profile overview form
+ */
+function simple_feed_profile_overview() {
+  module_load_include('inc', 'simple_feed', 'config/config_forms');
+  return simple_feed_get_profile_overview();
+}
+
+/**
+ * Default settings form
+ */
+function simple_feed_default_settings_form() {
+  module_load_include('inc', 'simple_feed', 'config/config_forms');
+  return simple_feed_get_default_settings_form();
+}
+
+/**
+ * Add profile form
+ */
+function simple_feed_add_profile_form($form, &$form_state) {
+  module_load_include('inc', 'simple_feed', 'config/config_forms');
+  return simple_feed_get_add_profile_form();
+}
+
+/**
+ * Configure profile form
+ */
+function simple_feed_config_profile_form($form, &$form_state, $profile) {
+  module_load_include('inc', 'simple_feed', 'config/config_forms');
+  return simple_feed_get_config_profile_form($profile);
+}
+
+/**
+ * Delete profile form
+ */
+function simple_feed_delete_profile_form($form, &$form_state, $profile) {
+  module_load_include('inc', 'simple_feed', 'config/config_forms');
+  return simple_feed_get_delete_profile_form($profile);
+}
+
+//------------------------------------------------------------------------------
+// Endpoint callbacks, will send json to client
+
+/**
+ * Welcome json for profile callback
+ */
+function simple_feed_welcome_profile($profile) {
+  module_load_include('inc', 'simple_feed', 'endpoints/welcome');
+  simple_feed_get_welcome_profile($profile);
+}
+
+/**
+ * Summary Listing menu callback
+ */
+function simple_feed_summary($profile) {
+  module_load_include('inc', 'simple_feed', 'endpoints/summary');
+  simple_feed_get_summary($profile);
+}
+
+/**
+ * Node menu callback
+ */
+function simple_feed_node($profile, $id=NULL) {
+  module_load_include('inc', 'simple_feed', 'endpoints/node');
+  simple_feed_get_node($profile, $id);
+}
+
+/**
+ * Nodes menu callback
+ */
+function simple_feed_nodes($profile, $id=NULL) {
+  module_load_include('inc', 'simple_feed', 'endpoints/nodes');
+  simple_feed_get_nodes($profile, $id);
+}
+
+/**
+ * Taxonomy Term menu callback
+ */
+function simple_feed_taxonomy_term($profile, $id=NULL) {
+  module_load_include('inc', 'simple_feed', 'endpoints/taxonomy_term');
+  simple_feed_get_taxonomy_term($profile, $id);
+}
+
+/**
+ * Taxonomy Terms menu callback
+ */
+function simple_feed_taxonomy_terms($profile, $id=NULL) {
+  module_load_include('inc', 'simple_feed', 'endpoints/taxonomy_terms');
+  simple_feed_get_taxonomy_terms($profile, $id);
+}
+
+//------------------------------------------------------------------------------
+// Access Callback
+
+function simple_feed_access_callback($profile) {
+  module_load_include('inc', 'simple_feed', 'security/verify_access');
+  return simple_feed_verify_access($profile);
+}
+
+//------------------------------------------------------------------------------
+// Misc. page callbacks
+
+/**
+ * Implements hook_help()
+ */
+function simple_feed_help($path, $arg) {
+  switch ($path) {
+    case 'admin/config/development/simple_feed':
+      $msg = 'Manage your feed profiles below.<br>'
+           . 'Profile has to be enabled first (checkbox) to be functional.';
+      return '<p>'.t($msg).'</p>';
+    case 'admin/config/development/simple_feed/default_settings':
+      $msg = 'Change default settings here.<br>';
+      return '<p>'.t($msg).'</p>';
+  }
+}
+
+/**
+ * Welcome message menu callback
+ */
+function simple_feed_welcome($param=NULL) {
+  $GLOBALS['devel_shutdown'] = FALSE; // suppressing devel output
+  if ($param === NULL) {
+    http_response_code(200);
+    echo t("Simple Feed module has been enabled successfully!");
+  } else {
+    http_response_code(404);
+    echo t("Simple Feed profile not found. ")."(/simple_feed/$param)";
+  }
+  exit();
+}
