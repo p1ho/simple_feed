@@ -4,6 +4,13 @@
  * Helper functions for simple_feed
  */
 
+/**
+ * Quick function return directory of setting
+ */
+function simple_feed_get_config_directory() {
+  return 'admin/config/services/simple_feed';
+}
+
  /**
   * Helper function to validate entity_types. Currently I only allow node
   * and taxonomy_term, but if the list expands, this function will be where
@@ -18,7 +25,7 @@
    );
    foreach ($entity_types as $type) {
      if (!in_array($type, $accepted_types)) {
-       throw new Exception ("Unknown entity type passed. You passed: $type.");
+       throw new Exception (t('Unknown entity type passed. You passed @type.', array('@type' => '"'.$type.'"')));
      }
    }
  }

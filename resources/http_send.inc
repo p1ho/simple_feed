@@ -83,6 +83,6 @@ function simple_feed_get_http_msg($status) {
   if (isset($http_codes[$status])) {
     return $http_codes[$status];
   } else {
-    throw new Exception("Status code passed was not recognized.");
+    throw new Exception(t("Status code passed was not recognized."));
   }
 }

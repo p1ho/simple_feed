@@ -6,4 +6,4 @@ package= UM Student-Life
 files[] = simple_feed.module
 files[] = simple_feed.install
 
-configure = admin/config/development/simple_feed
+configure = admin/config/services/simple_feed

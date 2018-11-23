@@ -11,6 +11,7 @@
  * Implements hook_menu()
  */
 function simple_feed_menu() {
+  module_load_include('inc', 'simple_feed');
   module_load_include('inc', 'simple_feed', 'resources/db_control');
 
   $items = array();
@@ -25,7 +26,7 @@ function simple_feed_menu() {
   );
   //----------------------------------------------------------------------------
   // profile menu
-  $config_dir = 'admin/config/development/simple_feed';
+  $config_dir = simple_feed_get_config_directory();
 
   $items[$config_dir] = array(
     'title' => t('Simple Feed'),
@@ -250,12 +251,14 @@ function simple_feed_access_callback($profile) {
  * Implements hook_help()
  */
 function simple_feed_help($path, $arg) {
+  module_load_include('inc', 'simple_feed');
+  $config_dir = simple_feed_get_config_directory();
   switch ($path) {
-    case 'admin/config/development/simple_feed':
+    case $config_dir:
       $msg = 'Manage your feed profiles below.<br>'
            . 'Profile has to be enabled first (checkbox) to be functional.';
       return '<p>'.t($msg).'</p>';
-    case 'admin/config/development/simple_feed/default_settings':
+    case $config_dir.'/default_settings':
       $msg = 'Change default settings here.<br>';
       return '<p>'.t($msg).'</p>';
   }

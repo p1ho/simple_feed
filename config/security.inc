@@ -17,6 +17,9 @@ function simple_feed_get_form_security($profile_dict) {
   $form['security']['access_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Access Key'),
+    '#description' => t('Do not enter url-encodable characters.'),
+    '#size' => 60,
+    '#maxlength' => 128,
     '#default_value' => $profile_dict['access_key'],
     '#required' => TRUE,
   );
@@ -76,10 +79,10 @@ function simple_feed_get_form_security($profile_dict) {
 }
 
 /**
- * sanitize and validate entered http referers and ip addresses.
+ * sanitize and correct entered http referers and ip addresses.
  */
-function simple_feed_security_validate(&$form, &$form_state) {
-  // Validate http referers, trim off bad entries
+function simple_feed_security_form_submit(&$form, &$form_state) {
+  // Check http referers, trim off bad entries
   if (isset($form_state['values']['http_referers_allowed'])) {
     $response = $form_state['values']['http_referers_allowed'];
     if (trim($response) === "") {
@@ -97,7 +100,7 @@ function simple_feed_security_validate(&$form, &$form_state) {
       $form_state['values']['http_referers_allowed'] = $http_referers;
     }
   }
-  // Validate ip addresses, trim off bad entries
+  // Check ip addresses, trim off bad entries
   if (isset($form_state['values']['ip_addresses_allowed'])) {
     $response = $form_state['values']['ip_addresses_allowed'];
     if (trim($response) === "") {

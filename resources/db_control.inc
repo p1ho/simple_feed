@@ -5,12 +5,18 @@
  */
 
 function simple_feed_add_profile($name, $desc) {
-  // add new entry to database
+  // check if name and description have special characters, if yes, throw error
+  // In normal workflow, this should have already been checked before this
+  // function is called, but this is a failsafe.
+  if (rawurlencode($name) !== $name) {
+    throw new Exception(t('Profile name contains url-encodable characters, profile not added'));
+  }
+  // add profile
   module_load_include('inc', 'simple_feed', 'resources/default_settings');
   $new_profile = array_merge(
     array(
-      'name'        => check_plain($name),
-      'description' => check_plain($desc),
+      'name'        => $name,
+      'description' => strip_tags($desc),
     ),
     simple_feed_get_current_default_settings()
   );
@@ -63,12 +69,16 @@ function simple_feed_validate_profile_settings($settings) {
   $table_field_lookup = array_flip(simple_feed_get_profiles_fields());
   foreach($settings_keys as $key) {
     if ($key === 'pfid') {
-      throw new Exception('Please do not update profile id.');
+      throw new Exception(t('Please do not update profile id.'));
     } else if ($key === 'name') {
-      throw new Exception('Please do not update profile name.');
+      throw new Exception(t('Please do not update profile name.'));
+    } else if ($key === 'access_key') {
+      if (rawurlencode($settings['access_key']) !== $settings['access_key']) {
+      throw new Exception(t('Access key contains url-encodable characters, setting not saved.'));
+      }
     } else {
       if (!isset($table_field_lookup[$key])) {
-        throw new Exception("$key is not a valid field for Simple Feed profile settings.");
+        throw new Exception(t('@key is not a valid field for Simple Feed profile settings.', array('@key' => '"'.$key.'"')));
       }
     }
   }

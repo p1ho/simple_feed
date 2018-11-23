@@ -8,8 +8,10 @@
  * Profile Menu Form Page
  */
 function simple_feed_get_profile_overview() {
+  module_load_include('inc', 'simple_feed');
   module_load_include('inc', 'simple_feed', 'resources/db_control');
   $all_profiles = simple_feed_get_all_profiles();
+  $config_dir = simple_feed_get_config_directory();
 
   $form = array();
 
@@ -29,8 +31,8 @@ function simple_feed_get_profile_overview() {
       'description' => $p['description'],
       'url' => l($host.$path, $path),
       'operations' => implode('&nbsp;&nbsp;', array(
-         l(t('Edit'), 'admin/config/development/simple_feed/profiles/list/'.$name),
-         l(t('Delete'), 'admin/config/development/simple_feed/profiles/list/'.$name.'/delete'),
+         l(t('Edit'), $config_dir.'/profiles/list/'.$name),
+         l(t('Delete'), $config_dir.'/profiles/list/'.$name.'/delete'),
       )),
     );
   }
@@ -78,8 +80,11 @@ function simple_feed_get_default_settings_form() {
   );
 
   $form = system_settings_form($form);
+  $form['#validate'] = array(
+    'simple_feed_default_settings_form_validate',
+  );
   $form['#submit'] = array(
-    'simple_feed_security_validate',
+    'simple_feed_security_form_submit',
     'simple_feed_default_settings_form_submit',
   );
 
@@ -87,26 +92,34 @@ function simple_feed_get_default_settings_form() {
 }
 
 /**
+ * Default settings validator
+ */
+function simple_feed_default_settings_form_validate(&$form, &$form_state) {
+  module_load_include('inc', 'simple_feed');
+
+  // validate access key
+  $response = $form_state['values'];
+  $access_key = $response['access_key'];
+  if (rawurlencode($access_key) !== $access_key) {
+    form_set_error('access_key', t('Access key contains url-encodable characters.'));
+  }
+
+}
+
+/**
  * Default settings submission handler
  */
 function simple_feed_default_settings_form_submit(&$form, &$form_state) {
   module_load_include('inc', 'simple_feed');
-
-  // form sanitation and validation
   $response = $form_state['values'];
-  $access_key = check_plain($response['access_key']);
-  if (strlen($access_key) > 255) {
-    $access_key = substr($access_key, 0, 255);
-    drupal_set_message(t('Sanitized profile access-key was longer than 255 characters, it has been truncated.'), 'warning');
-  }
 
   $response_processed = array(
-    'access_key'                       => $access_key,
+    'access_key'                       => $response['access_key'],
     'access_key_allow_in_url'          => (int)simple_feed_form_selections_to_boolean($response['access_key_allow_in_url']),
     'http_referer_restrict'            => (int)simple_feed_form_selections_to_boolean($response['http_referer_restrict']),
-    'http_referers_allowed'            => json_encode($response['http_referers_allowed']), // processed in simple_feed_security_validate
+    'http_referers_allowed'            => json_encode($response['http_referers_allowed']), // processed in simple_feed_security_form_submit
     'ip_address_restrict'              => (int)simple_feed_form_selections_to_boolean($response['ip_address_restrict']),
-    'ip_addresses_allowed'             => json_encode($response['ip_addresses_allowed']),  // processed in simple_feed_security_validate
+    'ip_addresses_allowed'             => json_encode($response['ip_addresses_allowed']),  // processed in simple_feed_security_form_submit
     'allow_unpublished'                => (int)simple_feed_form_selections_to_boolean($response['allow_unpublished']),
     'node_types_allowed'               => json_encode(simple_feed_form_selections_to_array($response['node_types_allowed'])),
     'taxonomy_vocabs_allowed'          => json_encode(simple_feed_form_selections_to_array($response['taxonomy_vocabs_allowed'])),
@@ -127,15 +140,23 @@ function simple_feed_default_settings_form_submit(&$form, &$form_state) {
  * Add Profile form
  */
 function simple_feed_get_add_profile_form() {
+  module_load_include('inc', 'simple_feed');
+
   $form = array();
   $form['profile_name'] = array(
     '#type' => 'textfield',
     '#title' => t('Profile Name'),
+    '#description' => t('Do not enter url-encodable characters.'),
+    '#size' => 60,
+    '#maxlength' => 60,
     '#required' => TRUE,
   );
   $form['description'] = array(
     '#type' => 'textfield',
     '#title' => t('Description'),
+    '#description' => t('html tags will be stripped.'),
+    '#size' => 60,
+    '#maxlength' => 128,
     '#required' => FALSE,
   );
 
@@ -144,12 +165,15 @@ function simple_feed_get_add_profile_form() {
     'submit' => array(
       '#type' => 'submit',
       '#value' => t('Create'),
+      '#validate' => array(
+        'simple_feed_add_profile_form_validate',
+      ),
       '#submit' => array(
         'simple_feed_add_profile_form_submit',
       ),
     ),
     'cancel' => array(
-        '#markup' => l(t('Cancel'), 'admin/config/development/simple_feed'),
+        '#markup' => l(t('Cancel'), simple_feed_get_config_directory()),
     ),
   );
 
@@ -157,29 +181,36 @@ function simple_feed_get_add_profile_form() {
 }
 
 /**
+ * Add Profile form validator
+ */
+function simple_feed_add_profile_form_validate(&$form, &$form_state) {
+  module_load_include('inc', 'simple_feed');
+
+  $response = $form_state['values'];
+  $name = $response['profile_name'];
+  if (rawurlencode($name) !== $name) {
+    form_set_error('profile_name', t('Profile name contains url-encodable characters.'));
+  }
+
+}
+
+/**
  * Add Profile form submission handler
  */
 function simple_feed_add_profile_form_submit(&$form, &$form_state) {
+  module_load_include('inc', 'simple_feed');
   module_load_include('inc', 'simple_feed', 'resources/db_control');
 
-  // form sanitation and validation
-  $name = check_plain($form_state['values']['profile_name']);
-  $desc = check_plain($form_state['values']['description']);
-
-  if (strlen($name) > 255) {
-    $name = substr($name, 0, 255);
-    drupal_set_message(t('Sanitized profile name was longer than 255 characters, it has been truncated.'), 'warning');
-  }
-  if (strlen($desc) > 255) {
-    $desc = substr($desc, 0, 255);
-    drupal_set_message(t('Sanitized profile description was longer than 255 characters, it has been truncated.'), 'warning');
-  }
+  // form sanitation and truncate fields if they exceed character limit
+  $response = $form_state['values'];
+  $name = $response['profile_name'];
+  $desc = strip_tags($response['description']);
 
   // save setting to db
   simple_feed_add_profile($name, $desc);
 
   // redirect and set message
-  $form_state['redirect'] = 'admin/config/development/simple_feed';
+  $form_state['redirect'] = simple_feed_get_config_directory();
   drupal_set_message(t('Profile created successfully.'), 'status');
 
   // Rebuild Menu
@@ -220,6 +251,9 @@ function simple_feed_get_config_profile_form($profile) {
     'description' => array(
       '#type' => 'textfield',
       '#title' => t('Description'),
+      '#description' => t('html tags will be stripped.'),
+      '#size' => 60,
+      '#maxlength' => 128,
       '#default_value' => $profile_dict['description'],
     )
   );
@@ -237,19 +271,27 @@ function simple_feed_get_config_profile_form($profile) {
       'submit' => array(
         '#type' => 'submit',
         '#value' => t('Save'),
+        '#validate' => array(
+          'simple_feed_config_profile_form_validate',
+        ),
         '#submit' => array(
+          'simple_feed_security_form_submit',
           'simple_feed_config_profile_form_submit',
         ),
       ),
       'submit-stay' => array(
         '#type' => 'submit',
         '#value' => t('Save and Continue Editing'),
+        '#validate' => array(
+          'simple_feed_config_profile_form_validate',
+        ),
         '#submit' => array(
+          'simple_feed_security_form_submit',
           'simple_feed_config_profile_form_submit'
         ),
       ),
       'cancel' => array(
-          '#markup' => l(t('Cancel'), 'admin/config/development/simple_feed'),
+          '#markup' => l(t('Cancel'), simple_feed_get_config_directory()),
       ),
     ),
   );
@@ -270,36 +312,36 @@ function simple_feed_get_config_profile_form($profile) {
 }
 
 /**
+ * Profile configuration form validator
+ */
+function simple_feed_config_profile_form_validate(&$form, &$form_state) {
+  module_load_include('inc', 'simple_feed');
+
+  $access_key = rawurlencode($form_state['values']['access_key']);
+  if (rawurlencode($access_key) !== $access_key) {
+    form_set_error('access_key', t('Access key contains url-encodable characters.'));
+  }
+}
+
+/**
  * Profile configuration form submission handler
  */
 function simple_feed_config_profile_form_submit(&$form, &$form_state) {
   module_load_include('inc', 'simple_feed');
-  module_load_include('inc', 'simple_feed', 'config/security'); // for onsubmit handler
-  simple_feed_security_validate($form, $form_state);
 
   // form sanitation and validation
   $response = $form_state['values'];
-  $desc = check_plain($response['description']);
-  $access_key = check_plain($response['access_key']);
-  if (strlen($desc) > 255) {
-    $desc = substr($desc, 0, 255);
-    drupal_set_message(t('Sanitized profile description was longer than 255 characters, it has been truncated.'), 'warning');
-  }
-  if (strlen($access_key) > 255) {
-    $access_key = substr($access_key, 0, 255);
-    drupal_set_message(t('Sanitized profile access-key was longer than 255 characters, it has been truncated.'), 'warning');
-  }
 
   // save settings to database
   $name = $response['profile_to_be_edited'];
   $settings = array(
-    'description'                      => $desc,
-    'access_key'                       => $access_key,
+    'description'                      => strip_tags($response['description']),
+    'access_key'                       => $response['access_key'],
     'access_key_allow_in_url'          => (int)simple_feed_form_selections_to_boolean($response['access_key_allow_in_url']),
     'http_referer_restrict'            => (int)simple_feed_form_selections_to_boolean($response['http_referer_restrict']),
-    'http_referers_allowed'            => json_encode($response['http_referers_allowed']), // processed in simple_feed_security_validate
+    'http_referers_allowed'            => json_encode($response['http_referers_allowed']), // processed in simple_feed_security_form_submit
     'ip_address_restrict'              => (int)simple_feed_form_selections_to_boolean($response['ip_address_restrict']),
-    'ip_addresses_allowed'             => json_encode($response['ip_addresses_allowed']),  // processed in simple_feed_security_validate
+    'ip_addresses_allowed'             => json_encode($response['ip_addresses_allowed']),  // processed in simple_feed_security_form_submit
     'allow_unpublished'                => (int)simple_feed_form_selections_to_boolean($response['allow_unpublished']),
     'node_types_allowed'               => json_encode(simple_feed_form_selections_to_array($response['node_types_allowed'])),
     'taxonomy_vocabs_allowed'          => json_encode(simple_feed_form_selections_to_array($response['taxonomy_vocabs_allowed'])),
@@ -312,7 +354,7 @@ function simple_feed_config_profile_form_submit(&$form, &$form_state) {
 
   // redirect and set message
   if ($form_state['triggering_element']['#parents'][0] === 'submit') {
-    $form_state['redirect'] = 'admin/config/development/simple_feed';
+    $form_state['redirect'] = simple_feed_get_config_directory();
   }
   drupal_set_message(t('Profile settings saved successfully.'), 'status');
 }
@@ -322,6 +364,8 @@ function simple_feed_config_profile_form_submit(&$form, &$form_state) {
  */
 
 function simple_feed_get_delete_profile_form($profile) {
+  module_load_include('inc', 'simple_feed');
+
   $form = array();
 
   $form['profile_to_be_deleted'] = array(
@@ -345,7 +389,7 @@ function simple_feed_get_delete_profile_form($profile) {
       ),
     ),
     'cancel' => array(
-        '#markup' => l(t('Cancel'), 'admin/config/development/simple_feed'),
+        '#markup' => l(t('Cancel'), simple_feed_get_config_directory()),
     ),
   );
 
@@ -356,13 +400,14 @@ function simple_feed_get_delete_profile_form($profile) {
  * Profile delete confirmation form submission handler
  */
 function simple_feed_delete_profile_form_submit(&$form, &$form_state) {
+  module_load_include('inc', 'simple_feed');
   module_load_include('inc', 'simple_feed', 'resources/db_control');
 
   // delete profile
   simple_feed_delete_profile($form_state['values']['profile_to_be_deleted']);
 
   // redirect and set message
-  $form_state['redirect'] = 'admin/config/development/simple_feed';
+  $form_state['redirect'] = simple_feed_get_config_directory();
   drupal_set_message(t('Profile deleted successfully.'), 'status');
 
   // Rebuild Menu
