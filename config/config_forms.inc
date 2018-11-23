@@ -204,10 +204,15 @@ function simple_feed_add_profile_form_submit(&$form, &$form_state) {
   // form sanitation and truncate fields if they exceed character limit
   $response = $form_state['values'];
   $name = $response['profile_name'];
-  $desc = strip_tags($response['description']);
+
+  $desc = $response['description'];
+  $desc_stripped = strip_tags($desc);
+  if ($desc_stripped !== $desc) {
+    drupal_set_message(t('Description contained characters resembling html tags, they have been trimmed.'), 'warning');
+  }
 
   // save setting to db
-  simple_feed_add_profile($name, $desc);
+  simple_feed_add_profile($name, $desc_stripped);
 
   // redirect and set message
   $form_state['redirect'] = simple_feed_get_config_directory();
@@ -332,10 +337,16 @@ function simple_feed_config_profile_form_submit(&$form, &$form_state) {
   // form sanitation and validation
   $response = $form_state['values'];
 
+  $desc = $response['description'];
+  $desc_stripped = strip_tags($desc);
+  if ($desc_stripped !== $desc) {
+    drupal_set_message(t('Description contained characters resembling html tags, they have been trimmed.'), 'warning');
+  }
+
   // save settings to database
   $name = $response['profile_to_be_edited'];
   $settings = array(
-    'description'                      => strip_tags($response['description']),
+    'description'                      => $desc_stripped,
     'access_key'                       => $response['access_key'],
     'access_key_allow_in_url'          => (int)simple_feed_form_selections_to_boolean($response['access_key_allow_in_url']),
     'http_referer_restrict'            => (int)simple_feed_form_selections_to_boolean($response['http_referer_restrict']),
