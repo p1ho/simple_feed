@@ -19,7 +19,7 @@ function simple_feed_get_summary($profile) {
     $query = new EntityFieldQuery();
     $query->entityCondition('entity_type', 'node')
           ->propertyCondition('type', $node_types);
-    if ($profile_dict['allow_unpublished']) {
+    if (!$profile_dict['allow_unpublished']) {
       $query->propertyCondition('status', NODE_PUBLISHED);
     }
     $result = $query->execute();

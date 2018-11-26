@@ -121,8 +121,10 @@ function simple_feed_check_ip_address($profile_dict) {
  */
 function simple_feed_check_key($profile_dict) {
   $true_key = $profile_dict['access_key'];
-  if (isset($_SERVER["HTTP_AUTHORIZATION"]) && !empty($_SERVER["HTTP_AUTHORIZATION"])) {
-    $auth_header = $_SERVER["HTTP_AUTHORIZATION"];
+  // Not using conventional HTTP_AUTHORIZATION for special cases where
+  // the Authorization header may be trimmed on redirect.
+  if (isset($_SERVER["HTTP_FEED_AUTHORIZATION"]) && !empty($_SERVER["HTTP_FEED_AUTHORIZATION"])) {
+    $auth_header = $_SERVER["HTTP_FEED_AUTHORIZATION"];
     if (substr($auth_header, 0, 4) === "KEY=") {
       $key = substr($auth_header, 4);
       return $key === $true_key;

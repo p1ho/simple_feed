@@ -55,7 +55,7 @@ function simple_feed_send_invalid_inputs($query_summary) {
 
 function simple_feed_send_access_denied() {
   $pkg = simple_feed_build_package(403, array(), array(), "Authorization failed: please double check your access key "
-                                            . "(append it to the HTTP request header 'Authorization: KEY=your-access-key', "
+                                            . "(append it to the HTTP request header 'Feed-Authorization: KEY=your-access-key', "
                                             . "or try appending the access key to the query parameters under 'key'). "
                                             . "If you're sure your access key is correct, please contact system administrator.");
   simple_feed_send_json($pkg);
