@@ -26,7 +26,8 @@ function simple_feed_get_taxonomy_terms($profile, $ids_str="") {
     $entity_type = "taxonomy_term";
     $query = new EntityFieldQuery();
     $query->entityCondition('entity_type', $entity_type)
-          ->propertyCondition('vid', $taxonomy_vocabs_id);
+          ->propertyCondition('vid', $taxonomy_vocabs_id)
+          ->propertyCondition('tid', $ids);
     $result = $query->execute();
     $ids_allowed = (isset($result[$entity_type])) ? array_keys($result[$entity_type]) : array();
     $entities = simple_feed_entity_load_multiple_with_url($entity_type, $ids_allowed);
