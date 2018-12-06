@@ -73,7 +73,7 @@ function simple_feed_menu() {
       // welcome page
       $items[$feed_dir . '/' . $name] = array(
         'page callback' => 'simple_feed_welcome_profile',
-        'page arguments' => array(1),
+        'page arguments' => array(1,2),
         'access callback' => 'simple_feed_access_callback',
         'access arguments' => array(1),
         'type' => MENU_CALLBACK,
@@ -191,9 +191,9 @@ function simple_feed_delete_profile_form($form, &$form_state, $profile) {
 /**
  * Welcome json for profile callback
  */
-function simple_feed_welcome_profile($profile) {
+function simple_feed_welcome_profile($profile, $endpoint) {
   module_load_include('inc', 'simple_feed', 'endpoints/welcome');
-  simple_feed_get_welcome_profile($profile);
+  simple_feed_get_welcome_profile($profile, $endpoint);
 }
 
 /**
