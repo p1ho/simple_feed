@@ -185,11 +185,19 @@ function simple_feed_get_add_profile_form() {
  */
 function simple_feed_add_profile_form_validate(&$form, &$form_state) {
   module_load_include('inc', 'simple_feed');
+  module_load_include('inc', 'simple_feed', 'resources/db_control');
 
   $response = $form_state['values'];
   $name = $response['profile_name'];
   if (rawurlencode($name) !== $name) {
     form_set_error('profile_name', t('Profile name contains url-encodable characters.'));
+  }
+
+  // if profile name exists already
+  $all_profiles = simple_feed_get_all_profiles();
+  $all_profiles_name = array_map(function($x) {return $x['name'];}, $all_profiles);
+  if (in_array($name, $all_profiles_name)) {
+    form_set_error('profile_name', t('Profile name "@name" is already taken.', array('@name' => $name)));
   }
 
 }
